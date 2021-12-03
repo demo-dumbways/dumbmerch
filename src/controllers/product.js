@@ -1,4 +1,5 @@
 const { product, user, category, productCategory } = require('../../models');
+const cloudinary = require('../thirdparty/cloudinary')
 
 exports.getProducts = async (req, res) => {
   try {
@@ -32,7 +33,7 @@ exports.getProducts = async (req, res) => {
     data = JSON.parse(JSON.stringify(data));
 
     data = data.map((item) => {
-      return { ...item, image: process.env.PATH_FILE + item.image };
+      return { ...item, image: cloudinary.url(item.image, {secure: true})}
     });
 
     res.send({
@@ -85,7 +86,7 @@ exports.getProduct = async (req, res) => {
 
     data = {
       ...data,
-      image: process.env.PATH_FILE + data.image,
+      image: cloudinary.url(data.image, {secure: true}),
     };
 
     res.send({
@@ -106,11 +107,16 @@ exports.addProduct = async (req, res) => {
     let { categoryId } = req.body;
     categoryId = categoryId.split(',');
 
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'dumbmerch_file',
+      use_filename: true,
+      unique_filename: false,
+    })
     const data = {
       name: req.body.name,
       desc: req.body.desc,
       price: req.body.price,
-      image: req.file.filename,
+      image: result.public_id,
       qty: req.body.qty,
       idUser: req.user.id,
     };
@@ -120,6 +126,8 @@ exports.addProduct = async (req, res) => {
     const productCategoryData = categoryId.map((item) => {
       return { idProduct: newProduct.id, idCategory: parseInt(item) };
     });
+
+    console.log(productCategoryData)
 
     await productCategory.bulkCreate(productCategoryData);
 
